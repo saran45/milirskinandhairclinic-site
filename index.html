@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Milir - Skin & Hair Clinic</title>
+  <meta name="description" content="Milir Skin & Hair Clinic — dermatology, hair loss, acne, laser & anti‑aging treatments. Book appointments online or via WhatsApp." />
+
+  <!--
+    ==============================================
+    Milir — Apple-inspired single-file site
+    • Mobile-first. No build tools. Works on GitHub Pages / GoDaddy.
+    • Tabs use a tiny hash router (#home, #services, #about, #contact, #faq).
+    • Images: stable Unsplash CDN (images.unsplash.com) with fixed photo IDs.
+    • WhatsApp + Google Maps integrated.
+    • Heavy comments for easy future edits.
+
+    BUGFIX (Oct 2025):
+    Fixed "Invalid or unexpected token" by removing raw newlines from
+    JS string literals and using escaped newlines ("\n").
+    - contact mailto body -> uses "\n\n"
+    - WhatsApp payload join -> uses "\n"
+    Also guarded all querySelectors and moved them inside init functions
+    which run after DOMContentLoaded.
+    ==============================================
+  -->
+
+  <style>
+    /* ===== Design tokens (trust-first palette) ===== */
+    :root{
+      --ink:#0e1420;        /* Deep Navy for headings (trust) */
+      --ink-2:#1d1f25;      /* Graphite body text */
+      --muted:#6e6e73;      /* Muted gray */
+      --bg:#f9fafb;         /* Clean near-white */
+      --brand:#0ea5a3;      /* Teal (healthcare, calm) */
+      --brand-dark:#087b79; /* Darker teal for hover */
+      --nav:#000;           /* Apple-like black nav */
+      --radius:18px;
+      --shadow:0 12px 30px rgba(0,0,0,.08);
+      --max:1100px;
+      --ease:cubic-bezier(.22,.61,.36,1); /* silky smooth */
+    }
+
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink-2)}
+    a{color:inherit;text-decoration:none}
+    img{max-width:100%;display:block}
+
+    /* ===== Global nav (Apple-like) ===== */
+    .global-nav{position:sticky;top:0;z-index:1000;background:var(--nav);color:#fff}
+    .global-nav .inner{max-width:var(--max);margin:auto;display:flex;align-items:center;gap:16px;padding:10px 16px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+    .brand svg{width:22px;height:22px;flex:0 0 22px}
+    .spacer{flex:1}
+    .tabs{display:flex;gap:18px}
+    .tabs a{color:#f5f5f7;opacity:.88;font-weight:600}
+    .tabs a:hover,.tabs a.active{opacity:1;text-decoration:underline}
+    .book-cta{margin-left:10px;background:#f5f5f7;color:#000;padding:8px 14px;border-radius:999px;font-weight:700}
+
+    /* ===== Pages & transitions ===== */
+    .page{display:none;opacity:0;transform:translateY(8px);transition:opacity .38s var(--ease),transform .38s var(--ease)}
+    .page.active{display:block;opacity:1;transform:none}
+    @media (prefers-reduced-motion: reduce){
+      .page,.card,.modal .dialog{transition:none}
+    }
+
+    /* ===== Hero ===== */
+    .hero{position:relative;isolation:isolate;min-height:58vh;display:grid;place-items:center;text-align:center;color:#fff}
+    .hero::before{content:"";position:absolute;inset:0;
+      background:radial-gradient(1100px 600px at 50% 20%, rgba(14,165,163,.35), transparent 60%),
+                 linear-gradient(160deg, #0b1f2a 0%, #0e1420 50%, #0a2f34 100%)}
+    .hero::after{content:"";position:absolute;inset:0; /* subtle clinic image texture */
+      background:url('https://images.unsplash.com/photo-1580281657527-47be3c7aa1b1?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;opacity:.18}
+    .hero-inner{position:relative;z-index:1;padding:72px 16px}
+    .hero h1{font-size:clamp(28px,5vw,56px);line-height:1.1;margin:.2em 0 .3em;font-weight:800}
+    .hero p{font-size:clamp(16px,2.3vw,20px);color:#d8f5f4;max-width:760px;margin:0 auto 18px}
+    .hero-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:999px;padding:12px 18px;font-weight:800;cursor:pointer;box-shadow:var(--shadow)}
+    .btn-primary{background:#fff;color:#000}
+    .btn-ghost{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25)}
+
+    /* ===== Section wrapper ===== */
+    .section{max-width:var(--max);margin:40px auto;padding:0 16px}
+    .section h2{font-size:clamp(22px,3vw,32px);color:var(--ink);margin-bottom:10px}
+    .sub{color:var(--muted);margin-bottom:18px}
+
+    /* ===== Services grid ===== */
+    .services{display:grid;grid-template-columns:1fr;gap:18px}
+    .card{background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;transition:transform .35s var(--ease), box-shadow .35s var(--ease)}
+    .card:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,.12)}
+    .card-media{position:relative;height:200px;background:#e8f3f3}
+    .card-media img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .card-body{padding:16px}
+    .card h3{margin:2px 0 6px;font-size:1.1rem}
+    .card p{color:var(--muted)}
+    .card-actions{display:flex;gap:10px;padding:0 16px 16px}
+    .chip{background:#e6fbfa;color:#064e4d;border-radius:999px;padding:6px 10px;font-size:.82rem;font-weight:700}
+
+    /* ===== About split ===== */
+    .about{display:grid;grid-template-columns:1fr;gap:22px;align-items:center}
+    .about .img{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+
+    /* ===== Contact ===== */
+    .contact-grid{display:grid;grid-template-columns:1fr;gap:16px}
+    .panel{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    form{display:grid;gap:10px}
+    input,select,textarea{border:1px solid #e5e5ea;border-radius:12px;padding:12px;font-size:1rem}
+    button[type="submit"]{background:var(--brand);color:#fff;border:none;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer;transition:background .25s var(--ease), transform .25s var(--ease)}
+    button[type="submit"]:hover{background:var(--brand-dark);transform:translateY(-1px)}
+
+    /* ===== Footer ===== */
+    footer{background:#0b1f2a;color:#a1c5c4;text-align:center;padding:28px;margin-top:44px}
+
+    /* ===== WhatsApp floating ===== */
+    .wa-fab{position:fixed;right:16px;bottom:16px;background:#25D366;color:#fff;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;box-shadow:0 10px 24px rgba(0,0,0,.2);z-index:1000}
+
+    /* ===== Modal (booking) ===== */
+    .modal{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.5);z-index:2000;padding:16px}
+    .modal.open{display:grid}
+    .dialog{width:100%;max-width:520px;background:#fff;border-radius:22px;box-shadow:var(--shadow);overflow:hidden;transform:translateY(14px) scale(.98);opacity:0;transition:transform .35s var(--ease),opacity .35s var(--ease)}
+    .modal.open .dialog{transform:none;opacity:1}
+    .dialog header{background:#0b1f2a;color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+    .dialog .content{padding:16px;display:grid;gap:10px}
+    .dialog .actions{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eee}
+    .btn-secondary{background:#f5f5f7}
+
+    /* ===== Responsive ===== */
+    @media (min-width: 680px){
+      .services{grid-template-columns:repeat(2,1fr)}
+      .about{grid-template-columns:1.1fr 1fr}
+      .contact-grid{grid-template-columns:1.1fr .9fr}
+    }
+    @media (min-width: 980px){
+      .services{grid-template-columns:repeat(3,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <!-- ===== Global Nav with Tabs ===== -->
+  <div class="global-nav" role="banner">
+    <div class="inner">
+      <div class="brand">
+        <!-- Simple Leaf Logo (SVG) -->
+        <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false" role="img">
+          <defs>
+            <linearGradient id="g" x1="0" x2="1">
+              <stop offset="0" stop-color="#9bf1e7"/>
+              <stop offset="1" stop-color="#06b6a9"/>
+            </linearGradient>
+          </defs>
+          <circle cx="32" cy="32" r="30" fill="url(#g)"/>
+          <path d="M19 35c7-2 17-9 20-20 6 9 3 23-7 30-7 5-14 4-13-10z" fill="#fff" opacity="0.92"/>
+        </svg>
+        <span>Milir Clinic</span>
+      </div>
+      <div class="spacer"></div>
+      <nav class="tabs" aria-label="Primary">
+        <!-- data-tab links are handled by the router below -->
+        <a href="#home" data-tab>Home</a>
+        <a href="#services" data-tab>Services</a>
+        <a href="#about" data-tab>About Us</a>
+        <a href="#contact" data-tab>Contact</a>
+        <a href="#faq" data-tab>FAQ</a>
+        <!-- Booking CTA opens modal -->
+        <a class="book-cta" href="#" id="openBookingNav">Book</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ===== HOME ===== -->
+  <main id="home" class="page active" role="main">
+    <!-- Hero with trust-building gradient background and subtle clinic texture -->
+    <section class="hero" aria-label="Hero">
+      <div class="hero-inner">
+        <h1>Dermatology, done right.</h1>
+        <p>Expert care for acne, hair loss (PRP), laser hair removal & anti‑aging — with simple online booking and WhatsApp support.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="openBookingHero">Book Appointment</button>
+          <a class="btn btn-ghost" href="#services">Explore Services</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured (quick peek) -->
+    <section class="section">
+      <h2>Featured Treatments</h2>
+      <p class="sub">Tailored, evidence‑based care using modern devices.</p>
+      <div class="services">
+        <!-- Use stable Unsplash photo IDs to avoid random topics -->
+        <article class="card" data-service="Skin Consultation">
+          <div class="card-media">
+            <img src="https://images.unsplash.com/photo-1598300183590-45e24b76c1bb?q=80&w=1600&auto=format&fit=crop" alt="Dermatology consultation" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="card-body">
+            <h3>Skin Consultation & Treatment</h3>
+            <p>Personalized plans for acne, pigmentation, rosacea and sensitive skin.</p>
+          </div>
+          <div class="card-actions"><span class="chip">30–45 mins</span><a class="btn" style="background:#fff" href="#services">See All</a></div>
+        </article>
+        <article class="card" data-service="PRP Therapy">
+          <div class="card-media">
+            <img src="https://images.unsplash.com/photo-1612277795421-2c9c35e5ad9a?q=80&w=1600&auto=format&fit=crop" alt="PRP hair therapy" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="card-body">
+            <h3>Hair Loss Solutions & PRP Therapy</h3>
+            <p>Advanced PRP and medical therapies to stimulate hair growth.</p>
+          </div>
+          <div class="card-actions"><span class="chip">60 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Laser Hair Removal">
+          <div class="card-media">
+            <img src="https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=1600&auto=format&fit=crop" alt="Laser hair removal" loading="lazy" onerror="this.style.display='none'">
+          </div>
+          <div class="card-body">
+            <h3>Laser Hair Removal</h3>
+            <p>Safe, effective, and long‑lasting reduction for all skin types.</p>
+          </div>
+          <div class="card-actions"><span class="chip">30–90 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== SERVICES (full list) ===== -->
+  <section id="services" class="page" aria-labelledby="services-title">
+    <div class="section">
+      <h2 id="services-title">Our Services</h2>
+      <p class="sub">High‑impact treatments performed with state‑of‑the-art equipment.</p>
+      <div class="services">
+        <!-- SKIN CARE -->
+        <article class="card" data-service="Comprehensive Skin Consultation">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1598300183590-45e24b76c1bb?q=80&w=1600&auto=format&fit=crop" alt="Comprehensive Skin Consultation" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Comprehensive Skin Consultation</h3><p>Diagnosis & treatment roadmap for acne, pigmentation, eczema, rosacea.</p></div>
+          <div class="card-actions"><span class="chip">30–45 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Acne & Scar Treatment">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1598550476439-6847785fcea9?q=80&w=1600&auto=format&fit=crop" alt="Acne & Scar Treatment" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Acne & Scar Treatment</h3><p>Microneedling, subcision, lasers — matched to scar type & skin tone.</p></div>
+          <div class="card-actions"><span class="chip">45–90 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Chemical Peels">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1593005510329-9cca87f6b93d?q=80&w=1600&auto=format&fit=crop" alt="Chemical Peels" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Skin Brightening & Chemical Peels</h3><p>Glow‑boosting peels to improve tone, texture, and clarity.</p></div>
+          <div class="card-actions"><span class="chip">20–45 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="HydraFacial">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1582092728668-66b11e0c9a7e?q=80&w=1600&auto=format&fit=crop" alt="HydraFacial" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Deep Cleanse HydraFacial</h3><p>Cleanse, extract & hydrate for immediate radiance and smoother texture.</p></div>
+          <div class="card-actions"><span class="chip">45 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Laser Resurfacing">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1620912875856-c4c7e6c0d2b0?q=80&w=1600&auto=format&fit=crop" alt="Laser Resurfacing" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Laser Resurfacing</h3><p>Fractional lasers for texture, fine lines & acne scar remodeling.</p></div>
+          <div class="card-actions"><span class="chip">60–90 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Wart & Mole Removal">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1600&auto=format&fit=crop" alt="Wart & Mole Removal" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Wart & Mole Removal</h3><p>Safe removal with dermatoscopic assessment & minimal downtime.</p></div>
+          <div class="card-actions"><span class="chip">20–30 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+
+        <!-- HAIR CARE -->
+        <article class="card" data-service="PRP Hair Therapy">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1612277795421-2c9c35e5ad9a?q=80&w=1600&auto=format&fit=crop" alt="PRP Hair Therapy" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Hair Loss Solutions & PRP</h3><p>Platelet‑rich plasma & medical therapy for pattern hair loss.</p></div>
+          <div class="card-actions"><span class="chip">60 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Scalp Mesotherapy">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1532634896-26909d0d4b6a?q=80&w=1600&auto=format&fit=crop" alt="Scalp Mesotherapy" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Scalp Mesotherapy</h3><p>Targeted scalp nutrients to improve hair density & scalp health.</p></div>
+          <div class="card-actions"><span class="chip">45 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Dandruff Care">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1600&auto=format&fit=crop" alt="Dandruff & Scalp Care" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Dandruff & Scalp Care</h3><p>Management for seborrheic dermatitis & scalp flaking/itch.</p></div>
+          <div class="card-actions"><span class="chip">30 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Hair Transplant Consult">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1600&auto=format&fit=crop" alt="Hair Transplant Consultation" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Hair Transplant Consultation</h3><p>Assess candidacy, graft planning & realistic outcome counseling.</p></div>
+          <div class="card-actions"><span class="chip">30–45 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+
+        <!-- AESTHETICS -->
+        <article class="card" data-service="Injectables">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?q=80&w=1600&auto=format&fit=crop" alt="Injectables" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Anti‑Aging: Botox / Fillers</h3><p>Natural‑looking results for lines, volume loss & contour.</p></div>
+          <div class="card-actions"><span class="chip">30–60 mins</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+        <article class="card" data-service="Tattoo Removal">
+          <div class="card-media"><img src="https://images.unsplash.com/photo-1620912875856-c4c7e6c0d2b0?q=80&w=1600&auto=format&fit=crop" alt="Laser Tattoo Removal" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="card-body"><h3>Laser Tattoo Removal</h3><p>Modern Q‑switched/ picosecond lasers with staged, safe fading.</p></div>
+          <div class="card-actions"><span class="chip">Multiple sessions</span><button class="btn btn-primary book-btn">Book</button></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ABOUT ===== -->
+  <section id="about" class="page" aria-labelledby="about-title">
+    <div class="section">
+      <h2 id="about-title">About Milir</h2>
+      <div class="about">
+        <div>
+          <p>Milir is a leading skin and hair clinic committed to advanced dermatological care with a personal touch. Our team of experienced dermatologists and aestheticians deliver high‑quality, evidence‑based treatments tailored to your needs.</p>
+          <ul>
+            <li>• Board‑certified clinicians</li>
+            <li>• FDA‑cleared devices</li>
+            <li>• Strict hygiene protocols</li>
+            <li>• Transparent pricing & aftercare</li>
+          </ul>
+        </div>
+        <div class="img" aria-hidden="true"><img src="https://images.unsplash.com/photo-1580281657527-47be3c7aa1b1?q=80&w=1600&auto=format&fit=crop" alt="Clinic interior" loading="lazy"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CONTACT (with WhatsApp & Google Maps) ===== -->
+  <section id="contact" class="page" aria-labelledby="contact-title">
+    <div class="section">
+      <h2 id="contact-title">Contact Us</h2>
+      <p class="sub">Book an appointment or send us a message. We're here to help.</p>
+      <div class="contact-grid">
+        <div class="panel">
+          <!-- Contact form: uses mailto fallback -->
+          <form id="contactForm">
+            <input type="text" name="name" placeholder="Your Name" required />
+            <input type="email" name="email" placeholder="Your Email" required />
+            <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
+            <button type="submit">Send Message</button>
+            <p id="contactNote" class="sub" style="margin-top:6px"></p>
+          </form>
+          <hr style="margin:16px 0;border:none;border-top:1px solid #eee"/>
+          <p><strong>Email:</strong> <a href="mailto:contact@Milirclinic.com">contact@Milirclinic.com</a></p>
+          <p><strong>Phone:</strong> <a href="tel:+919876543210">+91 98765 43210</a></p>
+          <p><strong>WhatsApp:</strong> <a href="https://wa.me/919876543210?text=Hello%20Milir%2C%20I%27d%20like%20to%20book%20an%20appointment." target="_blank" rel="noopener">Chat Now</a></p>
+          <p><strong>Location:</strong> 123 Skin Street, Dermatown, India</p>
+        </div>
+        <div class="panel" aria-label="Map">
+          <!-- Replace the address below with your exact address or Place ID for precision -->
+          <div style="aspect-ratio:1/1;max-height:420px">
+            <iframe title="Milir Clinic Location" style="border:0;width:100%;height:100%;border-radius:12px" loading="lazy" allowfullscreen
+                    referrerpolicy="no-referrer-when-downgrade"
+                    src="https://www.google.com/maps?q=123%20Skin%20Street%20Dermatown%20India&output=embed"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FAQ ===== -->
+  <section id="faq" class="page" aria-labelledby="faq-title">
+    <div class="section">
+      <h2 id="faq-title">Frequently Asked Questions</h2>
+      <div class="panel">
+        <details><summary><strong>Do you offer online consultations?</strong></summary><p>Yes, we offer tele‑derm consults. Use the Book button and choose a date/time; we’ll confirm on WhatsApp.</p></details>
+        <details><summary><strong>Which laser devices do you use?</strong></summary><p>We use FDA‑cleared platforms appropriate for a range of skin tones. Your dermatologist will recommend the best option.</p></details>
+        <details><summary><strong>Is PRP safe?</strong></summary><p>PRP uses your own plasma; it’s generally safe when performed by trained clinicians. We screen for contraindications during consult.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer>
+    <p>© 2025 Milir Clinic. All rights reserved.</p>
+  </footer>
+
+  <!-- ===== WhatsApp Floating Button (quick chat) ===== -->
+  <a class="wa-fab" href="https://wa.me/919876543210?text=Hello%20Milir%2C%20I%27d%20like%20to%20book%20an%20appointment." target="_blank" aria-label="Chat on WhatsApp" rel="noopener">
+    <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><path fill="#fff" d="M19.11 17.3c-.27-.13-1.58-.78-1.82-.86-.24-.09-.41-.13-.58.13-.17.27-.66.86-.81 1.03-.15.18-.3.2-.57.07-.27-.13-1.12-.41-2.13-1.3-.79-.7-1.33-1.57-1.49-1.83-.15-.27-.02-.41.11-.54.11-.11.24-.27.36-.41.12-.13.15-.24.23-.4.07-.16.04-.3-.02-.41-.07-.13-.58-1.4-.8-1.92-.21-.51-.43-.44-.58-.44h-.5c-.16 0-.41.06-.62.3-.21.27-.8.78-.8 1.9s.82 2.2.94 2.37c.11.16 1.61 2.45 3.9 3.43.55.24.98.38 1.32.49.55.18 1.05.15 1.45.09.44-.07 1.58-.65 1.8-1.27.22-.63.22-1.17.16-1.28-.06-.11-.24-.18-.5-.3z"/><path fill="#fff" d="M16 3A13 13 0 0 0 3 16a12.93 12.93 0 0 0 2 7l-1.3 4.8 4.9-1.28A13 13 0 1 0 16 3zm7.6 20.6c-1.02 1.01-2.2 1.8-3.52 2.35-1.08.46-2.28.7-3.52.7a10.8 10.8 0 0 1-5.16-1.33l-.37-.2-3.07.81.82-2.98-.22-.39A10.76 10.76 0 0 1 5.4 9.73 10.66 10.66 0 0 1 16 5.33c2.86 0 5.54 1.11 7.56 3.13a10.69 10.69 0 0 1 0 15.14z"/></svg>
+  </a>
+
+  <!-- ===== Scripts ===== -->
+  <script>
+    // ------------------------------------------------------------
+    // Tiny Hash Router (tabs) — initialized after DOM is ready
+    // ------------------------------------------------------------
+    function initRouter(){
+      const pages = Array.from(document.querySelectorAll('.page'));
+      const tabs  = Array.from(document.querySelectorAll('[data-tab]'));
+
+      function show(hash){
+        const target = (hash && hash.replace('#','')) || 'home';
+        pages.forEach(p => p.classList.toggle('active', p.id === target));
+        tabs.forEach(t => t.classList.toggle('active', t.getAttribute('href') === '#' + target));
+      }
+
+      if(!location.hash) location.replace('#home');
+      show(location.hash);
+      window.addEventListener('hashchange', () => show(location.hash));
+      tabs.forEach(t => t.addEventListener('click', e => {
+        const href = t.getAttribute('href');
+        if(href && href.startsWith('#')){
+          e.preventDefault();
+          if(location.hash !== href) location.hash = href;
+          show(href);
+        }
+      }));
+    }
+
+    // Booking Modal (with service pre-select)
+    function initBooking(){
+      const modal = document.getElementById('bookingModal');
+      const serviceSelect = document.getElementById('serviceSelect');
+      const openBookingHero = document.getElementById('openBookingHero');
+      const openBookingNav  = document.getElementById('openBookingNav');
+      const closeBookingBtn = document.getElementById('closeBooking');
+      const cancelBookingBtn= document.getElementById('cancelBooking');
+
+      function openModal(preselect){
+        if(!modal) return;
+        if(preselect && serviceSelect){
+          [...serviceSelect.options].forEach(o=>{ if(o.text === preselect) serviceSelect.value = o.value; });
+        }
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden','false');
+      }
+      function closeModal(){ if(!modal) return; modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
+
+      document.querySelectorAll('.book-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const card = e.currentTarget.closest('[data-service]');
+          openModal(card ? card.dataset.service : undefined);
+        });
+      });
+
+      if(openBookingHero) openBookingHero.addEventListener('click', () => openModal());
+      if(openBookingNav)  openBookingNav.addEventListener('click', (e)=>{ e.preventDefault(); openModal(); });
+      if(closeBookingBtn) closeBookingBtn.addEventListener('click', closeModal);
+      if(cancelBookingBtn)cancelBookingBtn.addEventListener('click', closeModal);
+      if(modal) modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+    }
+
+    // Contact form => mailto fallback (no backend required)
+    function initContactForm(){
+      const form = document.getElementById('contactForm');
+      if(!form) return;
+      form.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        const name = this.name.value.trim();
+        const email = this.email.value.trim();
+        const message = this.message.value.trim();
+        const subject = encodeURIComponent('Website enquiry from ' + name);
+        const body = encodeURIComponent(message + '\n\nFrom: ' + name + ' (' + email + ')');
+        window.location.href = `mailto:contact@Milirclinic.com?subject=${subject}&body=${body}`;
+        const note = document.getElementById('contactNote');
+        if(note) note.textContent = 'Opening your email app… If nothing happens, please email us directly.';
+        this.reset();
+      });
+    }
+
+    // Booking form => WhatsApp prefilled chat
+    function initBookingForm(){
+      const form = document.getElementById('bookingForm');
+      if(!form) return;
+      form.addEventListener('submit', function(ev){
+        ev.preventDefault();
+        const data = Object.fromEntries(new FormData(this).entries());
+        const lines = [
+          'New Appointment Request:',
+          `• Name: ${data.fullName}`,
+          `• Phone: ${data.phone}`,
+          `• Service: ${data.service}`,
+          `• Date: ${data.date}`,
+          `• Time: ${data.time}`,
+          data.notes ? `• Notes: ${data.notes}` : ''
+        ].filter(Boolean);
+        const text = encodeURIComponent(lines.join('\n'));
+        const whatsappNumber = '919876543210'; // country code, no +
+        const url = `https://wa.me/${whatsappNumber}?text=${text}`;
+        window.open(url, '_blank');
+        this.reset();
+        const modal = document.getElementById('bookingModal');
+        if(modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
+      });
+    }
+
+    // Boot after DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      initRouter();
+      initBooking();
+      initContactForm();
+      initBookingForm();
+
+      // --- Smoke tests (console) ---
+      (function runSmokeTests(){
+        const tests = [];
+        tests.push({name:'Services page exists', pass: !!document.querySelector('#services.page')});
+        tests.push({name:'>= 9 service cards', pass: document.querySelectorAll('#services .card').length >= 9});
+        tests.push({name:'WhatsApp FAB present', pass: !!document.querySelector('.wa-fab')});
+        tests.push({name:'Google Map iframe present', pass: !!document.querySelector('#contact iframe')});
+        tests.forEach(t=> console[(t.pass?'log':'error')](`TEST ${t.pass?'PASS':'FAIL'}: ${t.name}`));
+      })();
+    });
+  </script>
+
+  <!-- ===== Booking Modal (HTML at end so elements exist for JS) ===== -->
+  <div class="modal" id="bookingModal" aria-hidden="true" aria-labelledby="bookingTitle" role="dialog">
+    <div class="dialog" role="document">
+      <header>
+        <h3 id="bookingTitle">Book an Appointment</h3>
+        <button class="btn btn-secondary" id="closeBooking" aria-label="Close">Close</button>
+      </header>
+      <div class="content">
+        <form id="bookingForm">
+          <label>Full Name<input type="text" name="fullName" placeholder="Your full name" required /></label>
+          <label>Phone (WhatsApp preferred)<input type="tel" name="phone" placeholder="e.g., +91 98765 43210" required /></label>
+          <label>Preferred Service
+            <select name="service" id="serviceSelect" required>
+              <option value="" disabled selected>Select a service</option>
+              <option>Comprehensive Skin Consultation</option>
+              <option>Acne & Scar Treatment</option>
+              <option>Skin Brightening & Chemical Peels</option>
+              <option>Deep Cleanse HydraFacial</option>
+              <option>Laser Resurfacing</option>
+              <option>Wart & Mole Removal</option>
+              <option>Hair Loss Solutions & PRP</option>
+              <option>Scalp Mesotherapy</option>
+              <option>Dandruff & Scalp Care</option>
+              <option>Hair Transplant Consultation</option>
+              <option>Anti‑Aging: Botox / Fillers</option>
+              <option>Laser Tattoo Removal</option>
+            </select>
+          </label>
+          <label>Preferred Date<input type="date" name="date" required /></label>
+          <label>Preferred Time<input type="time" name="time" required /></label>
+          <label>Notes (optional)<textarea name="notes" rows="3" placeholder="Any concerns, allergies, or requests?"></textarea></label>
+          <button type="submit">Confirm via WhatsApp</button>
+        </form>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="cancelBooking">Cancel</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
